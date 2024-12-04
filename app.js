@@ -1,9 +1,12 @@
 'use strict';
 
 // load modules
+// Import required modules
 const express = require('express');
 const morgan = require('morgan');
 const { Sequelize } = require('sequelize');
+const models = require('./models'); // Initialize Sequelize models
+
 const userRoutes = require('./routes/users'); //Qn6 adding Users Route to the Express App!
 const courseRoutes = require('./routes/courses'); //Qn7 adding courses Route to the Express App!
 
@@ -13,10 +16,14 @@ const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'tr
 // create the Express app
 const app = express();
 
-// setup morgan which gives us http request logging
+// setup morgan which gives us HTTP request logging
 app.use(morgan('dev'));
 
-// #Qn2.5 setup Sequelize instance pointing to fsjstd-restapi.db with the sqlite dialect.
+// Add middleware to parse JSON
+app.use(express.json());
+
+
+// #Qn2.5 Initialize Sequelize instance with SQLite pointing to fsjstd-restapi.db with the sqlite dialect.
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: 'fsjstd-restapi.db',
@@ -26,9 +33,10 @@ const sequelize = new Sequelize({
 (async () => {
   try {
     await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
+    console.log('Database connection established successfully.');
+    await sequelize.sync(); // Synchronize the models with the database
   } catch (error) {
-    console.error('Unable to connect to the database:', error.message);
+    console.error('Unable to connect to the database:', error);
   }
 })();
 

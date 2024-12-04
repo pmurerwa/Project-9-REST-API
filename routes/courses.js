@@ -1,55 +1,58 @@
 //Qn7 Create the Courses Routes
 
-'use strict';
+"use strict";
 
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { Course, User } = require('../models');
-
-// Middleware to parse JSON
-router.use(express.json());
+const { Course, User } = require("../models");
+const { authMiddleware } = require('../middleware/auth-user'); // Authentication middleware
 
 // GET /api/courses
-router.get('/', async (req, res) => {
+// EXCEEDS Retrieve all courses along with associated user details
+router.get("/", async (req, res) => {
   try {
     const courses = await Course.findAll({
-      include: [{
+      attributes: { exclude: ["createdAt", "updatedAt"] }, // Filter out timestamps
+      include: {
         model: User,
-        attributes: ['id', 'firstName', 'lastName', 'emailAddress'], // include user data
-      }],
+        attributes: ["id", "firstName", "lastName", "emailAddress"], // Filter out sensitive user fields
+      },
     });
     res.status(200).json(courses);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 // GET /api/courses/:id
-router.get('/:id', async (req, res) => {
+// EXCEEDS Retrieve a single course by ID along with associated user details
+router.get("/:id", async (req, res) => {
   try {
     const course = await Course.findByPk(req.params.id, {
-      include: [{
+      attributes: { exclude: ["createdAt", "updatedAt"] }, // Filter out timestamps
+      include: {
         model: User,
-        attributes: ['id', 'firstName', 'lastName', 'emailAddress'], // include user data
-      }],
+        attributes: ["id", "firstName", "lastName", "emailAddress"], // Filter out sensitive user fields
+      },
     });
 
     if (course) {
       res.status(200).json(course);
     } else {
-      res.status(404).json({ message: 'Course not found' });
+      res.status(404).json({ message: "Course not found" });
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 // POST /api/courses
-router.post('/', async (req, res) => {
+router.post("/api/courses", async (req, res) => {
   try {
-    const { title, description, estimatedTime, materialsNeeded, userId } = req.body;
+    const { title, description, estimatedTime, materialsNeeded, userId } =
+      req.body; // The authenticated user
 
     // Create a new course
     const course = await Course.create({
@@ -63,55 +66,70 @@ router.post('/', async (req, res) => {
     // Set the Location header and respond with 201
     res.status(201).location(`/api/courses/${course.id}`).end();
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: 'Bad Request', error: error.errors });
+    if (error.name === "SequelizeValidationError") {
+      // #Qn8 Return 400 for validation errors
+      res.status(400).json({
+        message: "Validation errors",
+        errors: error.errors.map((err) => err.message), // Return validation messages
+      });
+    } else {
+      console.error(error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
 });
 
 // PUT /api/courses/:id
-router.put('/:id', async (req, res) => {
+// EXCEEDS Update a course if the authenticated user is the owner
+
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const course = await Course.findByPk(req.params.id);
 
     if (course) {
-      const { title, description, estimatedTime, materialsNeeded, userId } = req.body;
-
-      // Update the course
-      await course.update({
-        title,
-        description,
-        estimatedTime,
-        materialsNeeded,
-        userId,
-      });
-
-      res.status(204).end();
+      // Ensure user is the course owner
+      if (course.userId === req.currentUser.id) {
+        await course.update(req.body);
+        res.status(204).end();
+      } else {
+        res.status(403).json({ message: 'You are not authorized to update this course.' });
+      }
     } else {
-      res.status(404).json({ message: 'Course not found' });
+      res.status(404).json({ message: 'Course not found.' });
     }
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: 'Bad Request', error: error.errors });
+    if (error.name === 'SequelizeValidationError') {
+      res.status(400).json({ errors: error.errors.map((err) => err.message) });
+    } else {
+      res.status(500).json({ error: 'Unable to update the course.' });
+    }
   }
 });
 
 // DELETE /api/courses/:id
-router.delete('/:id', async (req, res) => {
+// EXCEEDS Delete a course if the authenticated user is the owner
+
+router.delete("/:id", authMiddleware, async (req, res) => {
   try {
     const course = await Course.findByPk(req.params.id);
 
     if (course) {
       // Delete the course
-      await course.destroy();
-      res.status(204).end();
+      if (course.userId === user.id) {
+        await course.destroy();
+        res.status(204).end();
+      } else {
+        res
+          .status(403)
+          .json({ message: "You are not authorized to delete this course." });
+      }
     } else {
-      res.status(404).json({ message: 'Course not found' });
+      res.status(404).json({ message: "Course not found" });
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 module.exports = router;
-

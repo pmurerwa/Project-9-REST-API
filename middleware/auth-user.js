@@ -1,29 +1,26 @@
-//Qn6 Implemented routes/users.js Middleware for authentication
-"use strict";
+const bcrypt = require('bcryptjs');
+const { User } = require('../models');
 
-const { User } = require("../models");
-const bcrypt = require("bcryptjs");
-const auth = require("basic-auth"); // For parsing the Authorization header
+// Middleware to authenticate the user
+module.exports.authMiddleware = async (req, res, next) => {
+  const { authorization } = req.headers;
 
-exports.authenticateUser = async (req, res, next) => {
-  const credentials = auth(req);
+  if (authorization) {
+    const [email, password] = Buffer.from(authorization.split(' ')[1], 'base64')
+      .toString()
+      .split(':');
 
-  if (credentials) {
     try {
-      const user = await User.findOne({
-        where: { emailAddress: credentials.name },
-      });
+      const user = await User.findOne({ where: { emailAddress: email } });
 
-      if (user && bcrypt.compareSync(credentials.pass, user.password)) {
-        req.currentUser = user; // Attach the authenticated user to the request object
-        return next();
-      } else {
-        res.status(401).json({ message: 'Authentication failed.' });
+      if (user && (await bcrypt.compare(password, user.password))) {
+        req.currentUser = user; // Attach user to the request
+        return next(); // Proceed to next middleware or route handler
       }
     } catch (error) {
-      next(error);
+      console.error(error.message);
     }
-  } else {
-    res.status(401).json({ message: 'Authentication required.' });
   }
+
+  res.status(401).json({ message: 'Access Denied' }); // Authentication failed
 };

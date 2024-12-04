@@ -1,51 +1,49 @@
-//#Qn3 ran this command to generate the users model.
-//npx sequelize model:create --name User --attributes firstName:string,lastName:string,emailAddress:string,password:string
-
-"use strict";
-const { Model } = require("sequelize");
-
 module.exports = (sequelize, DataTypes) => {
-  class User extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
-    static associate(models) {
-      // Define model association here
-      // #Qn4 A User can have many Courses
-      User.hasMany(models.Course, {
-        foreignKey: "userId",
-      });
-    }
-  }
-  User.init(
-    {
-      firstName: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      lastName: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      emailAddress: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-        validate: {
-          isEmail: true,
-        },
-      },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false,
+  const User = sequelize.define('User', {
+    // First name of the user, cannot be empty
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'First name is required.' },
       },
     },
-    {
-      sequelize,
-      modelName: "User",
-    }
-  );
+
+    // Last name of the user, cannot be empty
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Last name is required.' },
+      },
+    },
+
+    // Email address, must be a valid email and unique
+    emailAddress: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: { msg: 'Email address must be unique.' },
+      validate: {
+        isEmail: { msg: 'Email address must be valid.' },
+        notEmpty: { msg: 'Email address is required.' },
+      },
+    },
+
+    // Password for the user, cannot be empty
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Password is required.' },
+      },
+    },
+  });
+
+  // Associations with the Course model
+  User.associate = (models) => {
+    // One-to-many association: One user can have many courses
+    User.hasMany(models.Course, { foreignKey: 'userId' });
+  };
+
   return User;
 };
