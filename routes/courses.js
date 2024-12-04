@@ -5,7 +5,7 @@
 const express = require("express");
 const router = express.Router();
 const { Course, User } = require("../models");
-const { authMiddleware } = require('../middleware/auth-user'); // Authentication middleware
+const authMiddleware = require('../middleware/auth-user'); // Authentication middleware
 
 // GET /api/courses
 // EXCEEDS Retrieve all courses along with associated user details
@@ -18,9 +18,8 @@ router.get("/", async (req, res) => {
         attributes: ["id", "firstName", "lastName", "emailAddress"], // Filter out sensitive user fields
       },
     });
-    res.status(200).json(courses);
+    res.json(courses);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -49,32 +48,15 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST /api/courses
-router.post("/api/courses", async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { title, description, estimatedTime, materialsNeeded, userId } =
-      req.body; // The authenticated user
-
-    // Create a new course
-    const course = await Course.create({
-      title,
-      description,
-      estimatedTime,
-      materialsNeeded,
-      userId,
-    });
-
-    // Set the Location header and respond with 201
+    const course = await Course.create({ ...req.body, userId: req.currentUser.id });
     res.status(201).location(`/api/courses/${course.id}`).end();
   } catch (error) {
-    if (error.name === "SequelizeValidationError") {
-      // #Qn8 Return 400 for validation errors
-      res.status(400).json({
-        message: "Validation errors",
-        errors: error.errors.map((err) => err.message), // Return validation messages
-      });
+    if (error.name === 'SequelizeValidationError') {
+      res.status(400).json({ errors: error.errors.map((err) => err.message) });
     } else {
-      console.error(error);
-      res.status(500).json({ message: "Internal Server Error" });
+      res.status(500).json({ error: 'Unable to create course.' });
     }
   }
 });
@@ -114,8 +96,7 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     const course = await Course.findByPk(req.params.id);
 
     if (course) {
-      // Delete the course
-      if (course.userId === user.id) {
+      if (course.userId === req.currentUser.id) {
         await course.destroy();
         res.status(204).end();
       } else {

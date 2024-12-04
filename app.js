@@ -7,9 +7,6 @@ const morgan = require('morgan');
 const { Sequelize } = require('sequelize');
 const models = require('./models'); // Initialize Sequelize models
 
-const userRoutes = require('./routes/users'); //Qn6 adding Users Route to the Express App!
-const courseRoutes = require('./routes/courses'); //Qn7 adding courses Route to the Express App!
-
 // variable to enable global error logging
 const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'true';
 
@@ -19,7 +16,7 @@ const app = express();
 // setup morgan which gives us HTTP request logging
 app.use(morgan('dev'));
 
-// Add middleware to parse JSON
+// Middleware to parse incoming JSON requests
 app.use(express.json());
 
 
@@ -46,6 +43,10 @@ app.get('/', (req, res) => {
     message: 'Welcome to the REST API project!',
   });
 });
+
+// Import user and course routes
+const userRoutes = require('./routes/users'); //Qn6 adding Users Route to the Express App!
+const courseRoutes = require('./routes/courses'); //Qn7 adding courses Route to the Express App!
 
 // Use the users and courses routes
 app.use('/api/users', userRoutes); //Qn6 adding Users Route to the Express App!

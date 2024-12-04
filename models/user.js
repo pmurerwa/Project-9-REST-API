@@ -1,3 +1,6 @@
+const bcrypt = require('bcrypt');
+
+
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
     // First name of the user, cannot be empty
@@ -39,6 +42,13 @@ module.exports = (sequelize, DataTypes) => {
     },
   });
 
+  // Automatically hash password before saving
+  User.beforeCreate(async (user) => {
+    if (user.password) {
+      user.password = await bcrypt.hash(user.password, 10);
+    }
+  });
+  
   // Associations with the Course model
   User.associate = (models) => {
     // One-to-many association: One user can have many courses
